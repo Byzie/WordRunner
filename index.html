@@ -244,36 +244,31 @@
       cursor: not-allowed;
     }
     
-    /* Push-to-talk microphone button styling */
+    /* Microphone button styling */
     #toggleMicButton {
-      padding: 15px 20px;
-      font-size: 18px;
+      padding: 10px 20px;
+      font-size: 16px;
       width: 100%;
-      max-width: 280px;
+      max-width: 250px;
       margin: 10px auto;
-      height: 60px;
-      border-radius: 30px;
-      user-select: none;
-      -webkit-user-select: none;
-      -webkit-touch-callout: none;
+      border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
       position: relative;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     
-    #toggleMicButton:active {
-      background-color: #d44047; /* Red color when pressing */
-      transform: scale(0.98);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    /* Different colors for active/inactive states */
+    #toggleMicButton.active {
+      background-color: #d44047; /* Red when active */
     }
     
     /* Add a mic icon before the text */
     #toggleMicButton::before {
       content: "🎤";
       margin-right: 8px;
-      font-size: 20px;
+      font-size: 16px;
     }
 
     .mic-status {
@@ -588,10 +583,10 @@
         </div>
 
         <div id="micInputArea" style="display: none;">
-          <button id="toggleMicButton" class="submit-button">Press and Hold to Speak</button>
+          <button id="toggleMicButton" class="submit-button">Toggle Microphone</button>
           <div class="mic-status">
             <div id="micIndicator" class="mic-indicator"></div>
-            <span id="micStatusText">Press button to speak</span>
+            <span id="micStatusText">Microphone is off</span>
           </div>
           <div id="recognizedText" class="recognized-text"></div>
         </div>
@@ -696,12 +691,8 @@
       });
       elements.submitButton.addEventListener('click', processTypedWord);
       
-      // Push-to-talk functionality for the microphone button
-      elements.toggleMicButton.addEventListener('mousedown', startListening);
-      elements.toggleMicButton.addEventListener('touchstart', startListening);
-      elements.toggleMicButton.addEventListener('mouseup', stopListening);
-      elements.toggleMicButton.addEventListener('mouseleave', stopListening);
-      elements.toggleMicButton.addEventListener('touchend', stopListening);
+      // Toggle microphone button
+      elements.toggleMicButton.addEventListener('click', toggleMicrophone);
       
       elements.playAgainButton.addEventListener('click', resetGame);
 
@@ -726,16 +717,19 @@
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
           const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
           gameState.recognition = new SpeechRecognition();
-          gameState.recognition.continuous = false; // Changed to false for push-to-talk
-          gameState.recognition.interimResults = true; // Changed to true to show interim results
+          gameState.recognition.continuous = true; // Always on
+          gameState.recognition.interimResults = true; // Show interim results
           
           gameState.recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript.trim();
+            // Get the latest result
+            const resultIndex = event.resultIndex;
+            const transcript = event.results[resultIndex][0].transcript.trim();
+            
             // Show the interim results while speaking
             elements.recognizedText.textContent = `"${transcript}"`;
             
-            // Only process the final result when recognition ends
-            if (event.results[0].isFinal) {
+            // Only process the final result
+            if (event.results[resultIndex].isFinal) {
               processSpokenWord(transcript);
             }
           };
@@ -750,9 +744,17 @@
           };
           
           gameState.recognition.onend = () => {
-            // When recognition ends (button released), update UI
-            gameState.isListening = false;
-            updateMicrophoneUI();
+            // Auto restart if we're supposed to be listening
+            if (gameState.isListening && gameState.status === 'active') {
+              try {
+                gameState.recognition.start();
+              } catch (error) {
+                console.error('Error restarting after onend:', error);
+              }
+            } else {
+              gameState.isListening = false;
+              updateMicrophoneUI();
+            }
           };
         } else {
           elements.micModeButton.disabled = true;
@@ -781,8 +783,10 @@
           elements.keyboardInputArea.style.display = 'none';
           elements.micInputArea.style.display = 'block';
           
-          // For push-to-talk, we don't automatically start listening
-          // User will press the button to start
+          // In always-on mode, we automatically start listening when switching to voice input
+          if (gameState.status === 'active' && !gameState.isListening) {
+            startListening();
+          }
         }
       }
 
@@ -821,13 +825,15 @@
 
       function updateMicrophoneUI() {
         if (gameState.isListening) {
-          elements.toggleMicButton.textContent = 'Release to Submit';
+          elements.toggleMicButton.textContent = 'Turn Microphone Off';
+          elements.toggleMicButton.classList.add('active');
           elements.micIndicator.classList.add('active');
-          elements.micStatusText.textContent = 'Listening...';
+          elements.micStatusText.textContent = 'Microphone active - speak clearly';
         } else {
-          elements.toggleMicButton.textContent = 'Press and Hold to Speak';
+          elements.toggleMicButton.textContent = 'Turn Microphone On';
+          elements.toggleMicButton.classList.remove('active');
           elements.micIndicator.classList.remove('active');
-          elements.micStatusText.textContent = 'Press button to speak';
+          elements.micStatusText.textContent = 'Microphone is off';
           
           // Don't clear the recognized text when stopping the microphone
           // so user can see what was recognized
