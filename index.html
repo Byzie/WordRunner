@@ -601,6 +601,7 @@
       </div>
     </div>
   </div>
+
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       // Game state
@@ -795,6 +796,7 @@
           elements.recognizedText.textContent = '';
         }
       }
+
       // Game logic functions
       async function startGame() {
         resetGameState();
@@ -905,10 +907,17 @@
       }
 
       async function processTypedWord() {
-        const word = elements.wordInput.value.trim().toLowerCase();
+        // Get only the first word (split by spaces and take the first element)
+        const fullInput = elements.wordInput.value.trim().toLowerCase();
+        const word = fullInput.split(/\s+/)[0];
         elements.wordInput.value = '';
         
         if (!word) return;
+        
+        // If user entered multiple words, show a message
+        if (fullInput.includes(' ')) {
+          addLogMessage('info', 'Only the first word was processed');
+        }
         
         await processWord(word);
       }
@@ -916,17 +925,27 @@
       async function processSpokenWord(word) {
         if (!word || gameState.status !== 'active') return;
         
+        // Extract only the first word from speech input
+        const firstWord = word.trim().toLowerCase().split(/\s+/)[0];
+        
+        // If multiple words were spoken, show a message
+        if (word.trim().includes(' ')) {
+          addLogMessage('info', 'Only the first word was processed');
+          elements.recognizedText.textContent = `"${firstWord}" (first word)`;
+        }
+        
         // Get the active letter from the current game state
         const activeLetter = gameState.letterStatuses.find(status => status.active)?.letter.toLowerCase();
         
         // Only process if the word starts with the active letter
-        if (word.toLowerCase().trim().startsWith(activeLetter)) {
-          await processWord(word);
+        if (firstWord.startsWith(activeLetter)) {
+          await processWord(firstWord);
         } else {
-          addLogMessage('error', `"${word}" doesn't start with "${activeLetter.toUpperCase()}"`);
+          addLogMessage('error', `"${firstWord}" doesn't start with "${activeLetter.toUpperCase()}"`);
           playSound('incorrect');
         }
       }
+
       async function processWord(word) {
         word = word.toLowerCase().trim();
         
@@ -1181,4 +1200,4 @@
     });
   </script>
 </body>
-</html>		
+</html>
