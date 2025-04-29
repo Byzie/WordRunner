@@ -369,22 +369,6 @@
       opacity: 1;
       pointer-events: all;
     }
-    
-    /* Microphone permission dialog styles */
-    .permission-text {
-      margin: 20px 0;
-      font-size: 16px;
-      line-height: 1.5;
-      text-align: center;
-    }
-    
-    .mic-permission-buttons {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin-top: 20px;
-      gap: 10px;
-    }
 
     .game-over-modal {
       background-color: var(--background);
@@ -540,6 +524,58 @@
         grid-template-columns: repeat(2, 1fr);
       }
     }
+
+    /* Game animations */
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+    
+    @keyframes scorePoints {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.5); color: #ffcc00; }
+      100% { transform: scale(1); }
+    }
+    
+    @keyframes floatUp {
+      0% { opacity: 0; transform: translateY(0); }
+      20% { opacity: 1; }
+      80% { opacity: 1; transform: translateY(-30px); }
+      100% { opacity: 0; transform: translateY(-50px); }
+    }
+    
+    .score-display, .time-display {
+      position: relative;
+    }
+    
+    .floating-points {
+      position: absolute;
+      font-weight: bold;
+      color: var(--correct);
+      animation: floatUp 1.2s ease-out forwards;
+      pointer-events: none;
+      z-index: 10;
+      font-size: 1.2rem;
+    }
+
+    .floating-time {
+      position: absolute;
+      font-weight: bold;
+      color: var(--secondary);
+      animation: floatUp 1.2s ease-out forwards;
+      pointer-events: none;
+      z-index: 10;
+      font-size: 1.2rem;
+    }
+    
+    .score-animate {
+      animation: scorePoints 0.5s ease-in-out;
+    }
   </style>
 </head>
 <body>
@@ -555,12 +591,13 @@
       <div class="instructions">
         <h2>How to Play</h2>
         <ul>
-          <li>You'll be shown a random 7-letter word</li>
+          <li>You'll be shown a random 7-letter word from the English dictionary</li>
           <li>For each letter, provide a word that starts with that letter</li>
           <li>Score points equal to the length of each valid word</li>
-          <li>10+ letter words earn a 1.5 second time bonus!</li>
+          <li>Time bonuses for longer words: 7+ letters (+1.5s), 10+ letters (+2.5s), 13+ letters (+3.5s)!</li>
           <li>Each game lasts 30 seconds</li>
           <li>No re-using words</li>
+          <li>A new random word is selected each time</li>
         </ul>
         <p>Use your keyboard to type or switch to microphone mode to speak your answers! The microphone will automatically detect and process your words.</p>
       </div>
@@ -643,17 +680,6 @@
         <button id="playAgainButton" class="play-again-button">Play Again</button>
       </div>
     </div>
-    
-    <div id="micPermissionContainer" class="game-over-container">
-      <div class="game-over-modal">
-        <h2 class="game-over-title">Microphone Access</h2>
-        <p class="permission-text">WordRunner needs microphone access to recognize your spoken words. Please allow microphone access when prompted.</p>
-        <div class="mic-permission-buttons">
-          <button id="micPermissionAllowButton" class="play-again-button">Allow Microphone</button>
-          <button id="micPermissionCancelButton" class="submit-button" style="background-color: var(--muted); color: var(--foreground); margin-top: 10px;">Continue without Microphone</button>
-        </div>
-      </div>
-    </div>
   </div>
 
   <script>
@@ -703,16 +729,12 @@
         longestWord: document.getElementById('longestWord'),
         avgWordLength: document.getElementById('avgWordLength'),
         wordList: document.getElementById('wordList'),
-        playAgainButton: document.getElementById('playAgainButton'),
-        // Microphone permission elements
-        micPermissionContainer: document.getElementById('micPermissionContainer'),
-        micPermissionAllowButton: document.getElementById('micPermissionAllowButton'),
-        micPermissionCancelButton: document.getElementById('micPermissionCancelButton')
+        playAgainButton: document.getElementById('playAgainButton')
       };
 
       // Event listeners
       elements.themeToggle.addEventListener('click', toggleTheme);
-      elements.startButton.addEventListener('click', showMicPermissionDialog);
+      elements.startButton.addEventListener('click', startGame);
       elements.keyboardModeButton.addEventListener('click', () => setInputMethod('keyboard'));
       elements.micModeButton.addEventListener('click', () => setInputMethod('voice'));
       elements.wordInput.addEventListener('keypress', e => {
@@ -724,10 +746,6 @@
       
       // Toggle microphone button
       elements.toggleMicButton.addEventListener('click', toggleMicrophone);
-      
-      // Permission buttons
-      elements.micPermissionAllowButton.addEventListener('click', handleAllowMicrophone);
-      elements.micPermissionCancelButton.addEventListener('click', handleCancelMicrophone);
       
       elements.playAgainButton.addEventListener('click', resetGame);
 
@@ -746,41 +764,6 @@
         const isDark = document.body.classList.contains('dark');
         localStorage.setItem('wordRunnerTheme', isDark ? 'dark' : 'light');
         elements.themeToggle.textContent = isDark ? '☀️' : '🌙';
-      }
-      
-      // Request microphone permissions before starting the game
-      function requestMicrophonePermission() {
-        return new Promise((resolve, reject) => {
-          if (!gameState.recognition) {
-            reject("Speech recognition not supported");
-            return;
-          }
-          
-          try {
-            // This will prompt for microphone permission
-            gameState.recognition.start();
-            
-            // Listen for the start event to know permissions were granted
-            gameState.recognition.onstart = () => {
-              // Stop it right away - we just needed to trigger the permission prompt
-              gameState.recognition.stop();
-              resolve(true);
-            };
-            
-            // Handle permission denial or errors
-            const errorHandler = (event) => {
-              if (event.error === 'not-allowed' || event.error === 'permission-denied') {
-                reject("Microphone permission denied");
-              } else if (event.error !== 'aborted') {
-                reject(`Microphone error: ${event.error}`);
-              }
-            };
-            
-            gameState.recognition.onerror = errorHandler;
-          } catch (error) {
-            reject(`Error requesting microphone: ${error.message}`);
-          }
-        });
       }
 
       function initSpeechRecognition() {
@@ -926,47 +909,6 @@
           // Don't clear the recognized text when stopping the microphone
           // so user can see what was recognized
         }
-      }
-      
-      // Show microphone permission dialog before starting the game
-      function showMicPermissionDialog() {
-        // Show the microphone permission dialog
-        elements.micPermissionContainer.classList.add('visible');
-      }
-      
-      // Handle "Allow Microphone" button click
-      async function handleAllowMicrophone() {
-        try {
-          // Request microphone permission
-          await requestMicrophonePermission();
-          
-          // Hide the permission dialog
-          elements.micPermissionContainer.classList.remove('visible');
-          
-          // Start the game with microphone enabled
-          gameState.inputMethod = 'voice';
-          setInputMethod('voice');
-          startGame();
-        } catch (error) {
-          console.error('Error requesting microphone permission:', error);
-          
-          // If there was an error, still start the game but with keyboard input
-          elements.micPermissionContainer.classList.remove('visible');
-          gameState.inputMethod = 'keyboard';
-          setInputMethod('keyboard');
-          startGame();
-        }
-      }
-      
-      // Handle "Continue without Microphone" button click
-      function handleCancelMicrophone() {
-        // Hide the permission dialog
-        elements.micPermissionContainer.classList.remove('visible');
-        
-        // Start the game with keyboard input
-        gameState.inputMethod = 'keyboard';
-        setInputMethod('keyboard');
-        startGame();
       }
 
       // Game logic functions
@@ -1162,7 +1104,27 @@
         // Update score
         const wordScore = word.length;
         gameState.score += wordScore;
+        
+        // Animate the score
         elements.scoreValue.textContent = gameState.score;
+        elements.scoreValue.classList.add('score-animate');
+        
+        // Show floating points animation
+        const floatingPoints = document.createElement('div');
+        floatingPoints.className = 'floating-points';
+        floatingPoints.textContent = `+${wordScore}`;
+        floatingPoints.style.left = '50%';
+        floatingPoints.style.top = '0';
+        floatingPoints.style.transform = 'translateX(-50%)';
+        elements.scoreValue.parentElement.appendChild(floatingPoints);
+        
+        // Remove animation class and floating element after animation completes
+        setTimeout(() => {
+          elements.scoreValue.classList.remove('score-animate');
+          if (floatingPoints.parentNode) {
+            floatingPoints.parentNode.removeChild(floatingPoints);
+          }
+        }, 1200);
         
         // Update longest word
         if (word.length > (gameState.longestWord?.length || 0)) {
@@ -1173,11 +1135,45 @@
         addLogMessage('success', `"${word}" accepted! +${wordScore} points`);
         playSound('correct');
         
-        // Add time bonus for 10+ letter words
-        if (word.length >= 10) {
-          gameState.timeRemaining += 1.5;
-          addLogMessage('bonus', `Extra time bonus! +1.5 seconds`);
+        // Add time bonus based on word length
+        let timeBonus = 0;
+        
+        // Function to create and show floating time bonus
+        const showTimeBonus = (amount) => {
+          const floatingTime = document.createElement('div');
+          floatingTime.className = 'floating-time';
+          floatingTime.textContent = `+${amount}s`;
+          floatingTime.style.left = '50%';
+          floatingTime.style.top = '0';
+          floatingTime.style.transform = 'translateX(-50%)';
+          elements.timeValue.parentElement.appendChild(floatingTime);
+          
+          // Remove floating element after animation completes
+          setTimeout(() => {
+            if (floatingTime.parentNode) {
+              floatingTime.parentNode.removeChild(floatingTime);
+            }
+          }, 1200);
+        };
+        
+        if (word.length >= 13) {
+          timeBonus = 3.5;
+          gameState.timeRemaining += timeBonus;
+          addLogMessage('bonus', `Huge word! +${timeBonus} seconds bonus!`);
           playSound('bonus');
+          showTimeBonus(timeBonus);
+        } else if (word.length >= 10) {
+          timeBonus = 2.5;
+          gameState.timeRemaining += timeBonus;
+          addLogMessage('bonus', `Excellent word! +${timeBonus} seconds bonus!`);
+          playSound('bonus');
+          showTimeBonus(timeBonus);
+        } else if (word.length >= 7) {
+          timeBonus = 1.5;
+          gameState.timeRemaining += timeBonus;
+          addLogMessage('bonus', `Great word! +${timeBonus} seconds bonus!`);
+          playSound('bonus');
+          showTimeBonus(timeBonus);
         }
         
         // Move to next letter
@@ -1226,34 +1222,52 @@
         }
       }
 
+      // Keep track of used target words to prevent repetition
+      const usedTargetWords = new Set();
+      
       async function getRandomWord() {
-        // List of verified 7-letter English words
-        const verifiedWords = [
-          'journey', 'mystery', 'quality', 'victory', 'fantasy', 'machine', 'working',
-          'picture', 'balance', 'partner', 'capital', 'natural', 'complex', 'growing',
-          'thought', 'content', 'culture', 'perfect', 'station', 'student', 'subject',
-          'running', 'speaker', 'teacher', 'special', 'library', 'meeting', 'walking',
-          'manager', 'kitchen', 'pattern', 'payment', 'reading', 'program', 'service',
-          'company', 'country', 'morning', 'command', 'writing', 'organic', 'problem',
-          'history', 'science', 'fashion', 'product', 'support', 'control', 'private'
-        ];
-        
-        // Try to get a random word from our verified list
-        const randomWord = verifiedWords[Math.floor(Math.random() * verifiedWords.length)];
-        
-        // Validate that the word exists in dictionary API
-        try {
-          const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${randomWord}`);
-          if (response.ok) {
-            return randomWord;
+        // Fetch a list of 7-letter words from the API if we don't already have them cached
+        if (!window.sevenLetterWordsCache) {
+          try {
+            // First try to get a random word from the dictionary API
+            const response = await fetch('https://random-word-api.herokuapp.com/word?length=7');
+            if (response.ok) {
+              const randomWordArray = await response.json();
+              const randomWord = randomWordArray[0];
+              
+              // Verify it's a real word
+              const validationResponse = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${randomWord}`);
+              if (validationResponse.ok) {
+                return randomWord;
+              }
+            }
+          } catch (error) {
+            console.error('Error getting random word from API:', error);
           }
-        } catch (error) {
-          console.error('Error validating random word:', error);
+          
+          // If API fails, fall back to our extended list
+          window.sevenLetterWordsCache = [
+            // Common 7-letter English words - several hundred to ensure variety
+            'ability', 'absence', 'academy', 'account', 'accused', 'achieve', 'acquire', 'address', 'advance', 'adverse', 'advised', 'adviser', 'against', 'airline', 'airport', 'alcohol', 'alleged', 'already', 'althagh', 'amazing', 'amount', 'analyse', 'ancient', 'another', 'answer', 'anxiety', 'anxious', 'anybody', 'applied', 'arrange', 'arrival', 'article', 'assault', 'assumed', 'attempt', 'attract', 'auction', 'average', 'backing', 'balance', 'banking', 'barrier', 'battery', 'bearing', 'beating', 'because', 'bedroom', 'believe', 'beneath', 'benefit', 'besides', 'between', 'billion', 'binding', 'brother', 'brought', 'burning', 'cabinet', 'caliber', 'calling', 'capable', 'capital', 'captain', 'caption', 'capture', 'careful', 'carrier', 'caution', 'ceiling', 'central', 'centric', 'century', 'certain', 'chamber', 'channel', 'chapter', 'charity', 'charlie', 'charter', 'checked', 'chicken', 'chronic', 'circuit', 'classes', 'classic', 'climate', 'closing', 'closure', 'clothes', 'collect', 'college', 'combine', 'comfort', 'command', 'comment', 'compact', 'company', 'compare', 'compete', 'complex', 'compute', 'concept', 'concern', 'concert', 'conduct', 'confirm', 'connect', 'consent', 'consist', 'contact', 'contain', 'content', 'contest', 'context', 'control', 'convert', 'copying', 'corner', 'correct', 'council', 'counsel', 'counter', 'country', 'crucial', 'crystal', 'culture', 'current', 'cutting', 'dealing', 'decided', 'decimal', 'declare', 'decline', 'default', 'defence', 'deficit', 'deliver', 'density', 'deposit', 'desktop', 'despite', 'destroy', 'develop', 'devoted', 'diamond', 'digital', 'discuss', 'disease', 'display', 'dispute', 'distant', 'diverse', 'divided', 'drawing', 'driving', 'dynamic', 'eastern', 'economy', 'edition', 'elderly', 'element', 'engaged', 'enhance', 'essence', 'evening', 'evident', 'exactly', 'examine', 'example', 'excited', 'exclude', 'exhibit', 'expense', 'explain', 'express', 'extreme', 'factory', 'faculty', 'failing', 'failure', 'fashion', 'feature', 'federal', 'feeling', 'fiction', 'fifteen', 'filling', 'finance', 'finding', 'fishing', 'fitness', 'foreign', 'forever', 'formula', 'fortune', 'forward', 'founder', 'freedom', 'further', 'gallery', 'gateway', 'general', 'genetic', 'genuine', 'gigabit', 'greater', 'hanging', 'heading', 'healthy', 'hearing', 'heavily', 'helpful', 'helping', 'herself', 'highway', 'himself', 'history', 'holding', 'holiday', 'housing', 'however', 'hundred', 'husband', 'illegal', 'illness', 'imagine', 'imaging', 'improve', 'include', 'initial', 'inquiry', 'insight', 'install', 'instant', 'instead', 'intense', 'interim', 'involve', 'jointly', 'journal', 'journey', 'justice', 'justify', 'keeping', 'killing', 'kingdom', 'kitchen', 'knowing', 'landing', 'largely', 'lasting', 'leading', 'learned', 'leisure', 'liberal', 'library', 'license', 'limited', 'listing', 'logical', 'loyalty', 'machine', 'manager', 'married', 'massive', 'maximum', 'meaning', 'measure', 'medical', 'meeting', 'mention', 'message', 'million', 'mineral', 'minimal', 'minimum', 'missing', 'mission', 'mistake', 'mixture', 'monitor', 'monthly', 'morning', 'musical', 'mystery', 'natural', 'neither', 'nervous', 'network', 'neutral', 'notable', 'nothing', 'nowhere', 'nuclear', 'nursing', 'obvious', 'offense', 'officer', 'ongoing', 'opening', 'operate', 'opinion', 'optical', 'organic', 'outcome', 'outdoor', 'outlook', 'outside', 'overall', 'pacific', 'package', 'painted', 'parking', 'partial', 'partner', 'passage', 'passing', 'passion', 'passive', 'patient', 'pattern', 'payable', 'payment', 'penalty', 'pending', 'pension', 'percent', 'perfect', 'perform', 'perhaps', 'phoenix', 'picking', 'picture', 'pioneer', 'plastic', 'pointed', 'popular', 'portion', 'poverty', 'precise', 'predict', 'premier', 'premium', 'prepare', 'present', 'prevent', 'primary', 'printer', 'privacy', 'private', 'problem', 'proceed', 'process', 'produce', 'product', 'profile', 'program', 'project', 'promise', 'promote', 'protect', 'protein', 'protest', 'provide', 'publish', 'purpose', 'pushing', 'qualify', 'quality', 'quarter', 'radical', 'railway', 'readily', 'reading', 'reality', 'realize', 'receipt', 'receive', 'recover', 'reflect', 'regular', 'related', 'release', 'remains', 'removal', 'removed', 'replace', 'request', 'require', 'reserve', 'resolve', 'respect', 'respond', 'restore', 'retired', 'revenue', 'reverse', 'rollout', 'routine', 'running', 'satisfy', 'science', 'section', 'segment', 'selling', 'serious', 'service', 'serving', 'session', 'setting', 'seventh', 'several', 'shortly', 'showing', 'silence', 'silicon', 'similar', 'sitting', 'sixteen', 'skilled', 'smoking', 'society', 'somehow', 'someone', 'speaker', 'special', 'species', 'sponsor', 'station', 'storage', 'strange', 'stretch', 'student', 'studied', 'subject', 'succeed', 'success', 'suggest', 'summary', 'support', 'suppose', 'supreme', 'surface', 'surgery', 'surplus', 'survive', 'suspect', 'sustain', 'teacher', 'telecom', 'telling', 'tension', 'theatre', 'therapy', 'thereby', 'thought', 'through', 'tonight', 'totally', 'touched', 'towards', 'traffic', 'trouble', 'turning', 'typical', 'uniform', 'unknown', 'unusual', 'upgrade', 'upscale', 'utility', 'variety', 'various', 'vehicle', 'venture', 'version', 'veteran', 'victory', 'viewing', 'village', 'violent', 'virtual', 'visible', 'waiting', 'walking', 'wanting', 'warning', 'warrant', 'wearing', 'weather', 'webcast', 'website', 'wedding', 'weekend', 'welcome', 'welfare', 'western', 'whereas', 'whereby', 'whether', 'willing', 'winning', 'without', 'witness', 'working', 'writing', 'written'
+          ];
         }
         
-        // If validation fails for some reason, return a fallback word that's definitely real
-        const fallbackWords = ['journey', 'working', 'picture', 'quality', 'special', 'natural'];
-        return fallbackWords[Math.floor(Math.random() * fallbackWords.length)];
+        // Filter out words that have been used in this game session
+        const availableWords = window.sevenLetterWordsCache.filter(word => !usedTargetWords.has(word));
+        
+        // If we've used up all the words or no words are available, reset the used words set
+        if (availableWords.length === 0) {
+          usedTargetWords.clear();
+          return window.sevenLetterWordsCache[Math.floor(Math.random() * window.sevenLetterWordsCache.length)];
+        }
+        
+        // Get a random word from the available words
+        const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
+        
+        // Mark this word as used
+        usedTargetWords.add(randomWord);
+        
+        return randomWord;
       }
 
       function endGame() {
@@ -1313,6 +1327,10 @@
         gameState.spokenWords = [];
         gameState.longestWord = '';
         gameState.gameLog = [];
+        
+        // Clear the used target words when starting a new game
+        // This ensures each game gets a fresh set of random target words
+        usedTargetWords.clear();
         
         // Reset UI
         elements.scoreValue.textContent = '0';
