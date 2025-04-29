@@ -369,6 +369,22 @@
       opacity: 1;
       pointer-events: all;
     }
+    
+    /* Microphone permission dialog styles */
+    .permission-text {
+      margin: 20px 0;
+      font-size: 16px;
+      line-height: 1.5;
+      text-align: center;
+    }
+    
+    .mic-permission-buttons {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 20px;
+      gap: 10px;
+    }
 
     .game-over-modal {
       background-color: var(--background);
@@ -627,6 +643,17 @@
         <button id="playAgainButton" class="play-again-button">Play Again</button>
       </div>
     </div>
+    
+    <div id="micPermissionContainer" class="game-over-container">
+      <div class="game-over-modal">
+        <h2 class="game-over-title">Microphone Access</h2>
+        <p class="permission-text">WordRunner needs microphone access to recognize your spoken words. Please allow microphone access when prompted.</p>
+        <div class="mic-permission-buttons">
+          <button id="micPermissionAllowButton" class="play-again-button">Allow Microphone</button>
+          <button id="micPermissionCancelButton" class="submit-button" style="background-color: var(--muted); color: var(--foreground); margin-top: 10px;">Continue without Microphone</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -676,12 +703,16 @@
         longestWord: document.getElementById('longestWord'),
         avgWordLength: document.getElementById('avgWordLength'),
         wordList: document.getElementById('wordList'),
-        playAgainButton: document.getElementById('playAgainButton')
+        playAgainButton: document.getElementById('playAgainButton'),
+        // Microphone permission elements
+        micPermissionContainer: document.getElementById('micPermissionContainer'),
+        micPermissionAllowButton: document.getElementById('micPermissionAllowButton'),
+        micPermissionCancelButton: document.getElementById('micPermissionCancelButton')
       };
 
       // Event listeners
       elements.themeToggle.addEventListener('click', toggleTheme);
-      elements.startButton.addEventListener('click', startGame);
+      elements.startButton.addEventListener('click', showMicPermissionDialog);
       elements.keyboardModeButton.addEventListener('click', () => setInputMethod('keyboard'));
       elements.micModeButton.addEventListener('click', () => setInputMethod('voice'));
       elements.wordInput.addEventListener('keypress', e => {
@@ -693,6 +724,10 @@
       
       // Toggle microphone button
       elements.toggleMicButton.addEventListener('click', toggleMicrophone);
+      
+      // Permission buttons
+      elements.micPermissionAllowButton.addEventListener('click', handleAllowMicrophone);
+      elements.micPermissionCancelButton.addEventListener('click', handleCancelMicrophone);
       
       elements.playAgainButton.addEventListener('click', resetGame);
 
@@ -711,6 +746,41 @@
         const isDark = document.body.classList.contains('dark');
         localStorage.setItem('wordRunnerTheme', isDark ? 'dark' : 'light');
         elements.themeToggle.textContent = isDark ? '☀️' : '🌙';
+      }
+      
+      // Request microphone permissions before starting the game
+      function requestMicrophonePermission() {
+        return new Promise((resolve, reject) => {
+          if (!gameState.recognition) {
+            reject("Speech recognition not supported");
+            return;
+          }
+          
+          try {
+            // This will prompt for microphone permission
+            gameState.recognition.start();
+            
+            // Listen for the start event to know permissions were granted
+            gameState.recognition.onstart = () => {
+              // Stop it right away - we just needed to trigger the permission prompt
+              gameState.recognition.stop();
+              resolve(true);
+            };
+            
+            // Handle permission denial or errors
+            const errorHandler = (event) => {
+              if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+                reject("Microphone permission denied");
+              } else if (event.error !== 'aborted') {
+                reject(`Microphone error: ${event.error}`);
+              }
+            };
+            
+            gameState.recognition.onerror = errorHandler;
+          } catch (error) {
+            reject(`Error requesting microphone: ${error.message}`);
+          }
+        });
       }
 
       function initSpeechRecognition() {
@@ -856,6 +926,47 @@
           // Don't clear the recognized text when stopping the microphone
           // so user can see what was recognized
         }
+      }
+      
+      // Show microphone permission dialog before starting the game
+      function showMicPermissionDialog() {
+        // Show the microphone permission dialog
+        elements.micPermissionContainer.classList.add('visible');
+      }
+      
+      // Handle "Allow Microphone" button click
+      async function handleAllowMicrophone() {
+        try {
+          // Request microphone permission
+          await requestMicrophonePermission();
+          
+          // Hide the permission dialog
+          elements.micPermissionContainer.classList.remove('visible');
+          
+          // Start the game with microphone enabled
+          gameState.inputMethod = 'voice';
+          setInputMethod('voice');
+          startGame();
+        } catch (error) {
+          console.error('Error requesting microphone permission:', error);
+          
+          // If there was an error, still start the game but with keyboard input
+          elements.micPermissionContainer.classList.remove('visible');
+          gameState.inputMethod = 'keyboard';
+          setInputMethod('keyboard');
+          startGame();
+        }
+      }
+      
+      // Handle "Continue without Microphone" button click
+      function handleCancelMicrophone() {
+        // Hide the permission dialog
+        elements.micPermissionContainer.classList.remove('visible');
+        
+        // Start the game with keyboard input
+        gameState.inputMethod = 'keyboard';
+        setInputMethod('keyboard');
+        startGame();
       }
 
       // Game logic functions
