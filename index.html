@@ -243,6 +243,38 @@
       opacity: 0.5;
       cursor: not-allowed;
     }
+    
+    /* Push-to-talk microphone button styling */
+    #toggleMicButton {
+      padding: 15px 20px;
+      font-size: 18px;
+      width: 100%;
+      max-width: 280px;
+      margin: 10px auto;
+      height: 60px;
+      border-radius: 30px;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    #toggleMicButton:active {
+      background-color: #d44047; /* Red color when pressing */
+      transform: scale(0.98);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Add a mic icon before the text */
+    #toggleMicButton::before {
+      content: "🎤";
+      margin-right: 8px;
+      font-size: 20px;
+    }
 
     .mic-status {
       display: flex;
@@ -556,10 +588,10 @@
         </div>
 
         <div id="micInputArea" style="display: none;">
-          <button id="toggleMicButton" class="submit-button">Start Listening</button>
+          <button id="toggleMicButton" class="submit-button">Press and Hold to Speak</button>
           <div class="mic-status">
             <div id="micIndicator" class="mic-indicator"></div>
-            <span id="micStatusText">Microphone is off</span>
+            <span id="micStatusText">Press button to speak</span>
           </div>
           <div id="recognizedText" class="recognized-text"></div>
         </div>
@@ -663,7 +695,14 @@
         }
       });
       elements.submitButton.addEventListener('click', processTypedWord);
-      elements.toggleMicButton.addEventListener('click', toggleMicrophone);
+      
+      // Push-to-talk functionality for the microphone button
+      elements.toggleMicButton.addEventListener('mousedown', startListening);
+      elements.toggleMicButton.addEventListener('touchstart', startListening);
+      elements.toggleMicButton.addEventListener('mouseup', stopListening);
+      elements.toggleMicButton.addEventListener('mouseleave', stopListening);
+      elements.toggleMicButton.addEventListener('touchend', stopListening);
+      
       elements.playAgainButton.addEventListener('click', resetGame);
 
       // Check if localStorage has theme preference
@@ -687,13 +726,18 @@
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
           const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
           gameState.recognition = new SpeechRecognition();
-          gameState.recognition.continuous = true;
-          gameState.recognition.interimResults = false;
+          gameState.recognition.continuous = false; // Changed to false for push-to-talk
+          gameState.recognition.interimResults = true; // Changed to true to show interim results
           
           gameState.recognition.onresult = (event) => {
-            const result = event.results[event.resultIndex][0].transcript.trim();
-            elements.recognizedText.textContent = `"${result}"`;
-            processSpokenWord(result);
+            const transcript = event.results[0][0].transcript.trim();
+            // Show the interim results while speaking
+            elements.recognizedText.textContent = `"${transcript}"`;
+            
+            // Only process the final result when recognition ends
+            if (event.results[0].isFinal) {
+              processSpokenWord(transcript);
+            }
           };
           
           gameState.recognition.onerror = (event) => {
@@ -706,17 +750,9 @@
           };
           
           gameState.recognition.onend = () => {
-            if (gameState.isListening && gameState.status === 'active') {
-              // Auto restart if we're supposed to be listening
-              try {
-                gameState.recognition.start();
-              } catch (error) {
-                console.error('Error restarting after onend:', error);
-              }
-            } else {
-              gameState.isListening = false;
-              updateMicrophoneUI();
-            }
+            // When recognition ends (button released), update UI
+            gameState.isListening = false;
+            updateMicrophoneUI();
           };
         } else {
           elements.micModeButton.disabled = true;
@@ -745,9 +781,8 @@
           elements.keyboardInputArea.style.display = 'none';
           elements.micInputArea.style.display = 'block';
           
-          if (gameState.status === 'active') {
-            startListening();
-          }
+          // For push-to-talk, we don't automatically start listening
+          // User will press the button to start
         }
       }
 
@@ -786,14 +821,16 @@
 
       function updateMicrophoneUI() {
         if (gameState.isListening) {
-          elements.toggleMicButton.textContent = 'Stop Listening';
+          elements.toggleMicButton.textContent = 'Release to Submit';
           elements.micIndicator.classList.add('active');
-          elements.micStatusText.textContent = 'Microphone is active';
+          elements.micStatusText.textContent = 'Listening...';
         } else {
-          elements.toggleMicButton.textContent = 'Start Listening';
+          elements.toggleMicButton.textContent = 'Press and Hold to Speak';
           elements.micIndicator.classList.remove('active');
-          elements.micStatusText.textContent = 'Microphone is off';
-          elements.recognizedText.textContent = '';
+          elements.micStatusText.textContent = 'Press button to speak';
+          
+          // Don't clear the recognized text when stopping the microphone
+          // so user can see what was recognized
         }
       }
 
@@ -826,10 +863,9 @@
         // Add initial log message
         addLogMessage('info', 'Game started! Provide words that start with the highlighted letter.');
         
-        // Start listening if in voice mode
-        if (gameState.inputMethod === 'voice') {
-          startListening();
-        } else {
+        // For push-to-talk, we don't automatically start the microphone
+        // User will press and hold the button to speak
+        if (gameState.inputMethod === 'keyboard') {
           elements.wordInput.focus();
         }
       }
