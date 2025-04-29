@@ -1,3 +1,56 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Word Mic Game Preview</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      text-align: center;
+      padding: 30px;
+      background: #f4f4f4;
+    }
+    .letter {
+      display: inline-block;
+      margin: 0 5px;
+      padding: 10px;
+      font-size: 24px;
+      border-bottom: 2px solid #ccc;
+    }
+    .active {
+      border-color: green;
+      color: green;
+      font-weight: bold;
+    }
+    #log {
+      margin-top: 20px;
+      height: 100px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 10px;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+  <h1>Word Mic Game</h1>
+  <div>
+    <button id="micBtn">Mic Mode</button>
+    <button id="typeBtn">Type Mode</button>
+    <button id="startBtn">Start Game</button>
+  </div>
+  <div id="timer">⏱ 30.0s</div>
+  <div id="score">Score: 0</div>
+  <div id="targetWord"></div>
+  <div id="inputArea">
+    <input type="text" id="typedInput" />
+    <button id="submitBtn">Submit</button>
+  </div>
+  <div id="log"></div>
+
+  <script>
 document.addEventListener('DOMContentLoaded', () => {
   const micBtn = document.getElementById('micBtn');
   const typeBtn = document.getElementById('typeBtn');
@@ -18,7 +71,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let timer;
   let recognition;
 
-  const dictionary = [ ... ]; // (abbreviated here for clarity)
   const exampleWords = ["journey", "penguin", "machine", "quality", "freedom"];
 
   micBtn.onclick = () => { mode = "mic"; };
@@ -49,8 +101,8 @@ document.addEventListener('DOMContentLoaded', () => {
         micBtn.disabled = false;
         typeBtn.disabled = false;
         log("⏱ Time's up! Final Score: " + score);
-        alert("Time's up!\\n\\nFinal Score: " + score + " points");
-
+        alert("Time's up!\n\nFinal Score: " + score + " points");
+      }
     }, 100);
   };
 
@@ -126,3 +178,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === "Enter") submitBtn.click();
   });
 });
+</script>
+</body>
+</html>
