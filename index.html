@@ -546,7 +546,7 @@
           <li>Each game lasts 30 seconds</li>
           <li>No re-using words</li>
         </ul>
-        <p>Use your keyboard to type or switch to microphone mode to speak your answers!</p>
+        <p>Use your keyboard to type or switch to microphone mode to speak your answers! The microphone will automatically detect and process your words.</p>
       </div>
       <button id="startButton" class="start-button">Start Game</button>
     </div>
@@ -720,6 +720,9 @@
           gameState.recognition.continuous = true; // Always on
           gameState.recognition.interimResults = true; // Show interim results
           
+          // Track processed results to avoid duplicate processing
+          let processedResults = new Set();
+          
           gameState.recognition.onresult = (event) => {
             // Get the latest result
             const resultIndex = event.resultIndex;
@@ -728,9 +731,24 @@
             // Show the interim results while speaking
             elements.recognizedText.textContent = `"${transcript}"`;
             
-            // Only process the final result
+            // Only process the final result and avoid duplicates
             if (event.results[resultIndex].isFinal) {
-              processSpokenWord(transcript);
+              // Create a unique ID for this result (timestamp + transcript)
+              const resultId = Date.now() + "-" + transcript;
+              
+              // Only process if we haven't seen this exact result before
+              if (!processedResults.has(resultId)) {
+                processedResults.add(resultId);
+                processSpokenWord(transcript);
+                
+                // Limit the size of our tracking set
+                if (processedResults.size > 20) {
+                  // Keep only the most recent 10 results
+                  processedResults = new Set(
+                    Array.from(processedResults).slice(-10)
+                  );
+                }
+              }
             }
           };
           
@@ -869,10 +887,12 @@
         // Add initial log message
         addLogMessage('info', 'Game started! Provide words that start with the highlighted letter.');
         
-        // For push-to-talk, we don't automatically start the microphone
-        // User will press and hold the button to speak
+        // Focus the input or start the microphone based on active input method
         if (gameState.inputMethod === 'keyboard') {
           elements.wordInput.focus();
+        } else if (gameState.inputMethod === 'voice' && !gameState.isListening) {
+          // Automatically start microphone when in voice mode
+          startListening();
         }
       }
 
