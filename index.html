@@ -1,183 +1,1184 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Word Mic Game Preview</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WordRunner</title>
   <style>
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --secondary: #f97316;
+      --correct: #22c55e;
+      --incorrect: #ef4444;
+      --background: #f8fafc;
+      --foreground: #0f172a;
+      --muted: #e2e8f0;
+      --muted-foreground: #64748b;
+    }
+
+    /* Dark mode colors */
+    .dark {
+      --primary: #818cf8;
+      --primary-dark: #6366f1;
+      --secondary: #fb923c;
+      --correct: #4ade80;
+      --incorrect: #f87171;
+      --background: #0f172a;
+      --foreground: #f8fafc;
+      --muted: #1e293b;
+      --muted-foreground: #94a3b8;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
     body {
-      font-family: 'Arial', sans-serif;
+      background-color: var(--background);
+      color: var(--foreground);
+      transition: all 0.3s ease;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      max-width: 640px;
+      width: 100%;
+      padding: 1rem;
+      margin: 0 auto;
+    }
+
+    header {
       text-align: center;
-      padding: 30px;
-      background: #f4f4f4;
+      margin-bottom: 2rem;
+      padding-top: 2rem;
     }
-    .letter {
-      display: inline-block;
-      margin: 0 5px;
-      padding: 10px;
-      font-size: 24px;
-      border-bottom: 2px solid #ccc;
+
+    header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(to right, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-fill-color: transparent;
     }
-    .active {
-      border-color: green;
-      color: green;
-      font-weight: bold;
+
+    header p {
+      color: var(--muted-foreground);
+      margin-bottom: 1rem;
     }
-    #log {
-      margin-top: 20px;
-      height: 100px;
+
+    .game-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .game-info {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 400px;
+      margin-bottom: 1rem;
+    }
+
+    .score-display, .time-display {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .score-label, .time-label {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--muted-foreground);
+    }
+
+    .score-value, .time-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .time-value {
+      color: var(--secondary);
+    }
+
+    .timer-bar {
+      width: 100%;
+      max-width: 400px;
+      height: 6px;
+      border-radius: 999px;
+      background-color: var(--muted);
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+
+    .timer-progress {
+      height: 100%;
+      background-color: var(--secondary);
+      width: 100%;
+      transition: width 1s linear;
+    }
+
+    .letters-container {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .letter-tile {
+      width: 3rem;
+      height: 3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.5rem;
+      border-radius: 0.5rem;
+      background-color: var(--muted);
+      color: var(--foreground);
+      text-transform: uppercase;
+      transition: all 0.3s ease;
+    }
+
+    .letter-tile.active {
+      background-color: var(--primary);
+      color: white;
+      transform: scale(1.05);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+    }
+
+    .letter-tile.completed {
+      background-color: var(--muted);
+      color: var(--muted-foreground);
+      opacity: 0.6;
+    }
+
+    .input-container {
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .input-modes {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .mode-button {
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      font-weight: 500;
+      font-size: 0.875rem;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex: 1;
+    }
+
+    .mode-button.active {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .mode-button:not(.active) {
+      background-color: var(--muted);
+      color: var(--foreground);
+    }
+
+    .mode-button:hover:not(.active) {
+      background-color: var(--primary-dark);
+      color: white;
+    }
+
+    .word-input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border-radius: 0.375rem;
+      border: 2px solid var(--muted);
+      font-size: 1rem;
+      background-color: var(--background);
+      color: var(--foreground);
+      transition: all 0.2s ease;
+    }
+
+    .word-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
+
+    .submit-button {
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.375rem;
+      background-color: var(--primary);
+      color: white;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 1rem;
+    }
+
+    .submit-button:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .submit-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .mic-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .mic-indicator {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      background-color: var(--muted);
+    }
+
+    .mic-indicator.active {
+      background-color: var(--correct);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.6; }
+      50% { opacity: 1; }
+      100% { opacity: 0.6; }
+    }
+
+    .recognized-text {
+      margin-top: 0.5rem;
+      font-style: italic;
+      font-size: 0.875rem;
+      color: var(--muted-foreground);
+      min-height: 1.25rem;
+    }
+
+    .game-log {
+      width: 100%;
+      max-width: 400px;
+      border-radius: 0.5rem;
+      background-color: var(--muted);
+      padding: 1rem;
+      height: 150px;
       overflow-y: auto;
-      border: 1px solid #ccc;
-      padding: 10px;
-      background: #fff;
+      font-size: 0.875rem;
+      margin-top: 1rem;
+    }
+
+    .log-message {
+      margin-bottom: 0.5rem;
+      padding: 0.5rem;
+      border-radius: 0.25rem;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .log-message.success {
+      background-color: rgba(34, 197, 94, 0.1);
+      color: var(--correct);
+    }
+
+    .log-message.error {
+      background-color: rgba(239, 68, 68, 0.1);
+      color: var(--incorrect);
+    }
+
+    .log-message.info {
+      background-color: rgba(99, 102, 241, 0.1);
+      color: var(--primary);
+    }
+
+    .log-message.bonus {
+      background-color: rgba(249, 115, 22, 0.1);
+      color: var(--secondary);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .game-over-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .game-over-container.visible {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .game-over-modal {
+      background-color: var(--background);
+      border-radius: 0.75rem;
+      padding: 2rem;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      animation: zoomIn 0.3s ease;
+    }
+
+    @keyframes zoomIn {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .game-over-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+
+    .game-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .stat-label {
+      font-size: 0.875rem;
+      color: var(--muted-foreground);
+    }
+
+    .stat-value {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+
+    .word-list {
+      margin-top: 1rem;
+      max-height: 150px;
+      overflow-y: auto;
+      padding: 0.5rem;
+      border-radius: 0.375rem;
+      background-color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+
+    .word-item {
+      display: inline-block;
+      margin: 0.25rem;
+      padding: 0.25rem 0.5rem;
+      background-color: var(--primary);
+      color: white;
+      border-radius: 0.25rem;
+      font-size: 0.875rem;
+    }
+
+    .play-again-button {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 0.375rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .play-again-button:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .theme-toggle {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: none;
+      border: none;
+      color: var(--muted-foreground);
+      font-size: 1.5rem;
+      cursor: pointer;
+      transition: color 0.2s ease;
+    }
+
+    .theme-toggle:hover {
+      color: var(--foreground);
+    }
+
+    .start-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    .start-button {
+      padding: 0.75rem 2rem;
+      font-size: 1.25rem;
+      font-weight: 600;
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .start-button:hover {
+      background-color: var(--primary-dark);
+      transform: translateY(-2px);
+    }
+
+    .instructions {
+      max-width: 500px;
+      background-color: var(--muted);
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+    }
+
+    .instructions h2 {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .instructions ul {
+      list-style-position: inside;
+      margin-bottom: 1rem;
+    }
+
+    .instructions li {
+      margin-bottom: 0.5rem;
+    }
+
+    @media (max-width: 640px) {
+      .letter-tile {
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: 1.25rem;
+      }
+
+      .game-stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
     }
   </style>
 </head>
 <body>
-  <h1>Word Mic Game</h1>
-  <div>
-    <button id="micBtn">Mic Mode</button>
-    <button id="typeBtn">Type Mode</button>
-    <button id="startBtn">Start Game</button>
-  </div>
-  <div id="timer">⏱ 30.0s</div>
-  <div id="score">Score: 0</div>
-  <div id="targetWord"></div>
-  <div id="inputArea">
-    <input type="text" id="typedInput" />
-    <button id="submitBtn">Submit</button>
-  </div>
-  <div id="log"></div>
+  <button id="themeToggle" class="theme-toggle">🌙</button>
 
+  <div class="container">
+    <header>
+      <h1>WordRunner</h1>
+      <p>Race against time! Provide words for each letter</p>
+    </header>
+
+    <div id="startScreen" class="start-screen">
+      <div class="instructions">
+        <h2>How to Play</h2>
+        <ul>
+          <li>You'll be shown a random 7-letter word</li>
+          <li>For each letter, provide a word that starts with that letter</li>
+          <li>Score points equal to the length of each valid word</li>
+          <li>10+ letter words earn a 1.5 second time bonus!</li>
+          <li>Each game lasts 30 seconds</li>
+          <li>No re-using words</li>
+        </ul>
+        <p>Use your keyboard to type or switch to microphone mode to speak your answers!</p>
+      </div>
+      <button id="startButton" class="start-button">Start Game</button>
+    </div>
+
+    <div id="gameScreen" class="game-container" style="display: none;">
+      <div class="game-info">
+        <div class="score-display">
+          <span class="score-label">Score</span>
+          <span id="scoreValue" class="score-value">0</span>
+        </div>
+        <div class="time-display">
+          <span class="time-label">Time</span>
+          <span id="timeValue" class="time-value">30.0</span>
+        </div>
+      </div>
+
+      <div class="timer-bar">
+        <div id="timerProgress" class="timer-progress"></div>
+      </div>
+
+      <div id="lettersContainer" class="letters-container">
+        <!-- Letter tiles will be added here -->
+      </div>
+
+      <div class="input-container">
+        <div class="input-modes">
+          <button id="keyboardModeButton" class="mode-button active">Keyboard</button>
+          <button id="micModeButton" class="mode-button">Microphone</button>
+        </div>
+
+        <div id="keyboardInputArea">
+          <input type="text" id="wordInput" class="word-input" placeholder="Type a word..." autocomplete="off">
+          <button id="submitButton" class="submit-button">Submit</button>
+        </div>
+
+        <div id="micInputArea" style="display: none;">
+          <button id="toggleMicButton" class="submit-button">Start Listening</button>
+          <div class="mic-status">
+            <div id="micIndicator" class="mic-indicator"></div>
+            <span id="micStatusText">Microphone is off</span>
+          </div>
+          <div id="recognizedText" class="recognized-text"></div>
+        </div>
+      </div>
+
+      <div id="gameLog" class="game-log">
+        <!-- Log messages will be added here -->
+      </div>
+    </div>
+
+    <div id="gameOverContainer" class="game-over-container">
+      <div class="game-over-modal">
+        <h2 class="game-over-title">Game Over!</h2>
+        <div class="game-stats">
+          <div class="stat-item">
+            <span class="stat-label">Final Score</span>
+            <span id="finalScore" class="stat-value">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Words</span>
+            <span id="wordsCount" class="stat-value">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Longest Word</span>
+            <span id="longestWord" class="stat-value">-</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Avg. Word Length</span>
+            <span id="avgWordLength" class="stat-value">0</span>
+          </div>
+        </div>
+        <div>
+          <h3>Words Used:</h3>
+          <div id="wordList" class="word-list">
+            <!-- Words will be added here -->
+          </div>
+        </div>
+        <button id="playAgainButton" class="play-again-button">Play Again</button>
+      </div>
+    </div>
+  </div>
   <script>
-document.addEventListener('DOMContentLoaded', () => {
-  const micBtn = document.getElementById('micBtn');
-  const typeBtn = document.getElementById('typeBtn');
-  const startBtn = document.getElementById('startBtn');
-  const typedInput = document.getElementById('typedInput');
-  const submitBtn = document.getElementById('submitBtn');
-  const inputArea = document.getElementById('inputArea');
-  const targetDiv = document.getElementById('targetWord');
-  const timerDiv = document.getElementById('timer');
-  const scoreDiv = document.getElementById('score');
-  const logDiv = document.getElementById('log');
+    document.addEventListener('DOMContentLoaded', () => {
+      // Game state
+      const gameState = {
+        status: 'idle', // 'idle', 'active', 'complete'
+        targetWord: '',
+        letterStatuses: [],
+        currentLetterIndex: 0,
+        score: 0,
+        timeRemaining: 30,
+        inputMethod: 'keyboard', // 'keyboard' or 'voice'
+        isListening: false,
+        usedWords: new Set(),
+        spokenWords: [],
+        longestWord: '',
+        gameLog: [],
+        recognition: null,
+        timerInterval: null
+      };
 
-  let mode = "mic";
-  let targetWord = "";
-  let currentIndex = 0;
-  let score = 0;
-  let timeLeft = 30;
-  let timer;
-  let recognition;
+      // DOM elements
+      const elements = {
+        themeToggle: document.getElementById('themeToggle'),
+        startScreen: document.getElementById('startScreen'),
+        gameScreen: document.getElementById('gameScreen'),
+        startButton: document.getElementById('startButton'),
+        scoreValue: document.getElementById('scoreValue'),
+        timeValue: document.getElementById('timeValue'),
+        timerProgress: document.getElementById('timerProgress'),
+        lettersContainer: document.getElementById('lettersContainer'),
+        keyboardModeButton: document.getElementById('keyboardModeButton'),
+        micModeButton: document.getElementById('micModeButton'),
+        keyboardInputArea: document.getElementById('keyboardInputArea'),
+        micInputArea: document.getElementById('micInputArea'),
+        wordInput: document.getElementById('wordInput'),
+        submitButton: document.getElementById('submitButton'),
+        toggleMicButton: document.getElementById('toggleMicButton'),
+        micIndicator: document.getElementById('micIndicator'),
+        micStatusText: document.getElementById('micStatusText'),
+        recognizedText: document.getElementById('recognizedText'),
+        gameLog: document.getElementById('gameLog'),
+        gameOverContainer: document.getElementById('gameOverContainer'),
+        finalScore: document.getElementById('finalScore'),
+        wordsCount: document.getElementById('wordsCount'),
+        longestWord: document.getElementById('longestWord'),
+        avgWordLength: document.getElementById('avgWordLength'),
+        wordList: document.getElementById('wordList'),
+        playAgainButton: document.getElementById('playAgainButton')
+      };
 
-  const exampleWords = ["journey", "penguin", "machine", "quality", "freedom"];
+      // Event listeners
+      elements.themeToggle.addEventListener('click', toggleTheme);
+      elements.startButton.addEventListener('click', startGame);
+      elements.keyboardModeButton.addEventListener('click', () => setInputMethod('keyboard'));
+      elements.micModeButton.addEventListener('click', () => setInputMethod('voice'));
+      elements.wordInput.addEventListener('keypress', e => {
+        if (e.key === 'Enter') {
+          processTypedWord();
+        }
+      });
+      elements.submitButton.addEventListener('click', processTypedWord);
+      elements.toggleMicButton.addEventListener('click', toggleMicrophone);
+      elements.playAgainButton.addEventListener('click', resetGame);
 
-  micBtn.onclick = () => { mode = "mic"; };
-  typeBtn.onclick = () => { mode = "type"; };
-
-  startBtn.onclick = () => {
-    targetWord = exampleWords[Math.floor(Math.random() * exampleWords.length)];
-    currentIndex = 0;
-    score = 0;
-    timeLeft = 30;
-    updateTimer();
-    updateScore();
-    displayWord();
-    if (mode === "type") {
-      inputArea.style.display = "block";
-      typedInput.focus();
-    } else {
-      inputArea.style.display = "none";
-    }
-    clearInterval(timer);
-    timer = setInterval(() => {
-      timeLeft -= 0.1;
-      updateTimer();
-      if (timeLeft <= 0) {
-        clearInterval(timer);
-        inputArea.style.display = "none";
-        startBtn.style.display = "inline-block";
-        micBtn.disabled = false;
-        typeBtn.disabled = false;
-        log("⏱ Time's up! Final Score: " + score);
-        alert("Time's up!\n\nFinal Score: " + score + " points");
+      // Check if localStorage has theme preference
+      if (localStorage.getItem('wordRunnerTheme') === 'dark') {
+        document.body.classList.add('dark');
+        elements.themeToggle.textContent = '☀️';
       }
-    }, 100);
-  };
 
-  function displayWord() {
-    targetDiv.innerHTML = "";
-    for (let i = 0; i < targetWord.length; i++) {
-      const span = document.createElement('span');
-      span.textContent = targetWord[i].toUpperCase();
-      span.className = "letter";
-      if (i === currentIndex) span.classList.add("active");
-      targetDiv.appendChild(span);
-    }
-  }
+      // Initialize speech recognition
+      initSpeechRecognition();
 
-  function updateTimer() {
-    timerDiv.textContent = "⏱ " + timeLeft.toFixed(1) + "s";
-  }
+      // Helper functions
+      function toggleTheme() {
+        document.body.classList.toggle('dark');
+        const isDark = document.body.classList.contains('dark');
+        localStorage.setItem('wordRunnerTheme', isDark ? 'dark' : 'light');
+        elements.themeToggle.textContent = isDark ? '☀️' : '🌙';
+      }
 
-  function updateScore() {
-    scoreDiv.textContent = "Score: " + score;
-  }
+      function initSpeechRecognition() {
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+          const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+          gameState.recognition = new SpeechRecognition();
+          gameState.recognition.continuous = true;
+          gameState.recognition.interimResults = false;
+          
+          gameState.recognition.onresult = (event) => {
+            const result = event.results[event.resultIndex][0].transcript.trim();
+            elements.recognizedText.textContent = `"${result}"`;
+            processSpokenWord(result);
+          };
+          
+          gameState.recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+            if (event.error === 'no-speech') {
+              // No need to show an error for no speech
+              return;
+            }
+            addLogMessage('error', `Microphone error: ${event.error}`);
+          };
+          
+          gameState.recognition.onend = () => {
+            if (gameState.isListening && gameState.status === 'active') {
+              // Auto restart if we're supposed to be listening
+              try {
+                gameState.recognition.start();
+              } catch (error) {
+                console.error('Error restarting after onend:', error);
+              }
+            } else {
+              gameState.isListening = false;
+              updateMicrophoneUI();
+            }
+          };
+        } else {
+          elements.micModeButton.disabled = true;
+          elements.micModeButton.textContent = 'Mic Not Supported';
+        }
+      }
 
-  function log(message) {
-    const p = document.createElement("p");
-    p.textContent = message;
-    logDiv.appendChild(p);
-    logDiv.scrollTop = logDiv.scrollHeight;
-  }
+      function setInputMethod(method) {
+        if (gameState.inputMethod === method) return;
+        
+        gameState.inputMethod = method;
+        
+        if (method === 'keyboard') {
+          elements.keyboardModeButton.classList.add('active');
+          elements.micModeButton.classList.remove('active');
+          elements.keyboardInputArea.style.display = 'block';
+          elements.micInputArea.style.display = 'none';
+          
+          if (gameState.isListening) {
+            gameState.recognition.stop();
+            gameState.isListening = false;
+          }
+        } else {
+          elements.keyboardModeButton.classList.remove('active');
+          elements.micModeButton.classList.add('active');
+          elements.keyboardInputArea.style.display = 'none';
+          elements.micInputArea.style.display = 'block';
+          
+          if (gameState.status === 'active') {
+            startListening();
+          }
+        }
+      }
 
-  submitBtn.onclick = () => {
-    const word = typedInput.value.trim().toLowerCase();
-    const currentLetter = targetWord[currentIndex].toLowerCase();
-    if (!word) return;
+      function toggleMicrophone() {
+        if (gameState.isListening) {
+          stopListening();
+        } else {
+          startListening();
+        }
+      }
 
-    if (word[0] !== currentLetter) {
-      log("❌ Word must start with: " + currentLetter.toUpperCase());
-      return;
-    }
+      function startListening() {
+        if (!gameState.recognition) return;
+        
+        try {
+          gameState.recognition.start();
+          gameState.isListening = true;
+          updateMicrophoneUI();
+        } catch (error) {
+          console.error('Error starting speech recognition:', error);
+          addLogMessage('error', 'Error starting microphone');
+        }
+      }
 
-    if (word === targetWord.toLowerCase()) {
-      log("⚠️ You can't use the target word!");
-      return;
-    }
+      function stopListening() {
+        if (!gameState.recognition) return;
+        
+        try {
+          gameState.recognition.stop();
+          gameState.isListening = false;
+          updateMicrophoneUI();
+        } catch (error) {
+          console.error('Error stopping speech recognition:', error);
+        }
+      }
 
-    fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
-      .then(response => {
-        if (!response.ok) {
-          log("❌ Not a valid dictionary word: " + word);
+      function updateMicrophoneUI() {
+        if (gameState.isListening) {
+          elements.toggleMicButton.textContent = 'Stop Listening';
+          elements.micIndicator.classList.add('active');
+          elements.micStatusText.textContent = 'Microphone is active';
+        } else {
+          elements.toggleMicButton.textContent = 'Start Listening';
+          elements.micIndicator.classList.remove('active');
+          elements.micStatusText.textContent = 'Microphone is off';
+          elements.recognizedText.textContent = '';
+        }
+      }
+      // Game logic functions
+      async function startGame() {
+        resetGameState();
+        elements.startScreen.style.display = 'none';
+        elements.gameScreen.style.display = 'flex';
+        
+        // Get 7-letter word from API
+        const targetWord = await getRandomWord();
+        gameState.targetWord = targetWord;
+        
+        // Initialize letter statuses
+        gameState.letterStatuses = targetWord.split('').map((letter, index) => ({
+          letter,
+          active: index === 0,
+          completed: false
+        }));
+        
+        // Render letter tiles
+        renderLetterTiles();
+        
+        // Start timer
+        startTimer();
+        
+        // Set game status to active
+        gameState.status = 'active';
+        
+        // Add initial log message
+        addLogMessage('info', 'Game started! Provide words that start with the highlighted letter.');
+        
+        // Start listening if in voice mode
+        if (gameState.inputMethod === 'voice') {
+          startListening();
+        } else {
+          elements.wordInput.focus();
+        }
+      }
+
+      function renderLetterTiles() {
+        elements.lettersContainer.innerHTML = '';
+        
+        gameState.letterStatuses.forEach((status, index) => {
+          const tile = document.createElement('div');
+          tile.className = 'letter-tile';
+          tile.textContent = status.letter.toUpperCase();
+          tile.dataset.letter = status.letter.toLowerCase();
+          tile.dataset.active = status.active.toString();
+          tile.dataset.completed = status.completed.toString();
+          
+          if (status.active) {
+            tile.classList.add('active');
+          } else if (status.completed) {
+            tile.classList.add('completed');
+          }
+          
+          elements.lettersContainer.appendChild(tile);
+        });
+      }
+
+      function startTimer() {
+        if (gameState.timerInterval) {
+          clearInterval(gameState.timerInterval);
+        }
+        
+        gameState.timeRemaining = 30;
+        updateTimerDisplay();
+        
+        gameState.timerInterval = setInterval(() => {
+          gameState.timeRemaining -= 0.1;
+          gameState.timeRemaining = Math.max(0, parseFloat(gameState.timeRemaining.toFixed(1)));
+          
+          updateTimerDisplay();
+          
+          if (gameState.timeRemaining <= 0) {
+            endGame();
+          }
+        }, 100);
+      }
+
+      function updateTimerDisplay() {
+        elements.timeValue.textContent = gameState.timeRemaining.toFixed(1);
+        const percentage = (gameState.timeRemaining / 30) * 100;
+        elements.timerProgress.style.width = `${percentage}%`;
+        
+        // Change color when timer is low
+        if (gameState.timeRemaining <= 5) {
+          elements.timeValue.style.color = 'var(--incorrect)';
+          elements.timerProgress.style.backgroundColor = 'var(--incorrect)';
+        } else {
+          elements.timeValue.style.color = 'var(--secondary)';
+          elements.timerProgress.style.backgroundColor = 'var(--secondary)';
+        }
+      }
+
+      function addLogMessage(type, message) {
+        const logItem = document.createElement('div');
+        logItem.className = `log-message ${type}`;
+        logItem.textContent = message;
+        
+        elements.gameLog.appendChild(logItem);
+        elements.gameLog.scrollTop = elements.gameLog.scrollHeight;
+        
+        // Keep only the last 10 messages
+        while (elements.gameLog.children.length > 10) {
+          elements.gameLog.removeChild(elements.gameLog.firstChild);
+        }
+        
+        gameState.gameLog.push({ type, message, timestamp: Date.now() });
+      }
+
+      async function processTypedWord() {
+        const word = elements.wordInput.value.trim().toLowerCase();
+        elements.wordInput.value = '';
+        
+        if (!word) return;
+        
+        await processWord(word);
+      }
+
+      async function processSpokenWord(word) {
+        if (!word || gameState.status !== 'active') return;
+        
+        // Get the active letter from the current game state
+        const activeLetter = gameState.letterStatuses.find(status => status.active)?.letter.toLowerCase();
+        
+        // Only process if the word starts with the active letter
+        if (word.toLowerCase().trim().startsWith(activeLetter)) {
+          await processWord(word);
+        } else {
+          addLogMessage('error', `"${word}" doesn't start with "${activeLetter.toUpperCase()}"`);
+          playSound('incorrect');
+        }
+      }
+      async function processWord(word) {
+        word = word.toLowerCase().trim();
+        
+        // 1. Check that word starts with active letter
+        const activeLetterStatus = gameState.letterStatuses.find(status => status.active);
+        if (!activeLetterStatus) return;
+        
+        const activeLetter = activeLetterStatus.letter.toLowerCase();
+        if (!word.startsWith(activeLetter)) {
+          addLogMessage('error', `"${word}" doesn't start with "${activeLetter.toUpperCase()}"`);
+          playSound('incorrect');
           return;
         }
-        return response.json();
-      })
-      .then(data => {
-        if (!data) return;
-        score += word.length;
-        if (word.length >= 10) timeLeft += 1.5;
-        updateScore();
-        log("✅ Accepted: " + word);
-
-        currentIndex++;
-        if (currentIndex >= targetWord.length) {
-          targetWord = exampleWords[Math.floor(Math.random() * exampleWords.length)];
-          currentIndex = 0;
+        
+        // 2. Check that word hasn't been used before
+        if (gameState.usedWords.has(word)) {
+          addLogMessage('error', `"${word}" was already used in this game`);
+          playSound('incorrect');
+          return;
         }
+        
+        // 3. Check that the word is not the target word itself
+        if (word === gameState.targetWord.toLowerCase()) {
+          addLogMessage('error', `You can't use the target word "${word}" itself`);
+          playSound('incorrect');
+          return;
+        }
+        
+        // 4. Validate word with dictionary API
+        const isValid = await validateWord(word);
+        if (!isValid) {
+          addLogMessage('error', `"${word}" is not a valid word`);
+          playSound('incorrect');
+          return;
+        }
+        
+        // Word is valid, process it
+        gameState.usedWords.add(word);
+        gameState.spokenWords.push(word);
+        
+        // Update score
+        const wordScore = word.length;
+        gameState.score += wordScore;
+        elements.scoreValue.textContent = gameState.score;
+        
+        // Update longest word
+        if (word.length > (gameState.longestWord?.length || 0)) {
+          gameState.longestWord = word;
+        }
+        
+        // Add log message
+        addLogMessage('success', `"${word}" accepted! +${wordScore} points`);
+        playSound('correct');
+        
+        // Add time bonus for 10+ letter words
+        if (word.length >= 10) {
+          gameState.timeRemaining += 1.5;
+          addLogMessage('bonus', `Extra time bonus! +1.5 seconds`);
+          playSound('bonus');
+        }
+        
+        // Move to next letter
+        const activeLetterIndex = gameState.letterStatuses.findIndex(status => status.active);
+        if (activeLetterIndex < 0) return;
+        
+        // Update letter statuses
+        const updatedStatuses = [...gameState.letterStatuses];
+        updatedStatuses[activeLetterIndex].active = false;
+        updatedStatuses[activeLetterIndex].completed = true;
+        
+        const isLastLetter = activeLetterIndex === gameState.letterStatuses.length - 1;
+        if (!isLastLetter) {
+          updatedStatuses[activeLetterIndex + 1].active = true;
+          gameState.currentLetterIndex = activeLetterIndex + 1;
+          addLogMessage('info', `Moving to letter "${updatedStatuses[activeLetterIndex + 1].letter.toUpperCase()}"`);
+        } else {
+          // Completed the whole word, get a new one
+          const newWord = await getRandomWord();
+          gameState.targetWord = newWord;
+          
+          gameState.letterStatuses = newWord.split('').map((letter, index) => ({
+            letter,
+            active: index === 0,
+            completed: false
+          }));
+          
+          addLogMessage('info', `New word: ${newWord.toUpperCase()}`);
+        }
+        
+        gameState.letterStatuses = isLastLetter ? gameState.letterStatuses : updatedStatuses;
+        renderLetterTiles();
+        
+        if (gameState.inputMethod === 'keyboard') {
+          elements.wordInput.focus();
+        }
+      }
 
-        displayWord();
-        typedInput.value = "";
-      })
-      .catch(() => log("❌ Error checking word validity."));
-  };
+      async function validateWord(word) {
+        try {
+          const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+          return response.ok;
+        } catch (error) {
+          console.error('Error validating word:', error);
+          return false;
+        }
+      }
 
-  typedInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") submitBtn.click();
-  });
-});
-</script>
+      async function getRandomWord() {
+        // List of verified 7-letter English words
+        const verifiedWords = [
+          'journey', 'mystery', 'quality', 'victory', 'fantasy', 'machine', 'working',
+          'picture', 'balance', 'partner', 'capital', 'natural', 'complex', 'growing',
+          'thought', 'content', 'culture', 'perfect', 'station', 'student', 'subject',
+          'running', 'speaker', 'teacher', 'special', 'library', 'meeting', 'walking',
+          'manager', 'kitchen', 'pattern', 'payment', 'reading', 'program', 'service',
+          'company', 'country', 'morning', 'command', 'writing', 'organic', 'problem',
+          'history', 'science', 'fashion', 'product', 'support', 'control', 'private'
+        ];
+        
+        // Try to get a random word from our verified list
+        const randomWord = verifiedWords[Math.floor(Math.random() * verifiedWords.length)];
+        
+        // Validate that the word exists in dictionary API
+        try {
+          const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${randomWord}`);
+          if (response.ok) {
+            return randomWord;
+          }
+        } catch (error) {
+          console.error('Error validating random word:', error);
+        }
+        
+        // If validation fails for some reason, return a fallback word that's definitely real
+        const fallbackWords = ['journey', 'working', 'picture', 'quality', 'special', 'natural'];
+        return fallbackWords[Math.floor(Math.random() * fallbackWords.length)];
+      }
+
+      function endGame() {
+        // Stop the timer
+        clearInterval(gameState.timerInterval);
+        gameState.timerInterval = null;
+        
+        // Stop listening if in voice mode
+        if (gameState.isListening) {
+          stopListening();
+        }
+        
+        // Update game status
+        gameState.status = 'complete';
+        
+        // Calculate stats
+        const totalWords = gameState.spokenWords.length;
+        const avgLength = totalWords > 0 
+          ? (gameState.spokenWords.reduce((sum, word) => sum + word.length, 0) / totalWords).toFixed(1) 
+          : '0.0';
+        
+        // Update results screen
+        elements.finalScore.textContent = gameState.score;
+        elements.wordsCount.textContent = totalWords;
+        elements.longestWord.textContent = gameState.longestWord || '-';
+        elements.avgWordLength.textContent = avgLength;
+        
+        // Add words to the word list
+        elements.wordList.innerHTML = '';
+        gameState.spokenWords.forEach(word => {
+          const wordEl = document.createElement('div');
+          wordEl.className = 'word-item';
+          wordEl.textContent = word;
+          elements.wordList.appendChild(wordEl);
+        });
+        
+        // Show game over screen
+        elements.gameOverContainer.classList.add('visible');
+      }
+
+      function resetGame() {
+        elements.gameOverContainer.classList.remove('visible');
+        elements.startScreen.style.display = 'flex';
+        elements.gameScreen.style.display = 'none';
+        resetGameState();
+      }
+
+      function resetGameState() {
+        // Reset the game state
+        gameState.status = 'idle';
+        gameState.targetWord = '';
+        gameState.letterStatuses = [];
+        gameState.currentLetterIndex = 0;
+        gameState.score = 0;
+        gameState.timeRemaining = 30;
+        gameState.usedWords = new Set();
+        gameState.spokenWords = [];
+        gameState.longestWord = '';
+        gameState.gameLog = [];
+        
+        // Reset UI
+        elements.scoreValue.textContent = '0';
+        elements.timeValue.textContent = '30.0';
+        elements.timerProgress.style.width = '100%';
+        elements.gameLog.innerHTML = '';
+        elements.recognizedText.textContent = '';
+        elements.wordInput.value = '';
+        
+        // Stop timer if running
+        if (gameState.timerInterval) {
+          clearInterval(gameState.timerInterval);
+          gameState.timerInterval = null;
+        }
+      }
+
+      function playSound(type) {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        switch (type) {
+          case 'correct':
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+            oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.3);
+            break;
+            
+          case 'incorrect':
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(349.23, audioContext.currentTime); // F4
+            oscillator.frequency.setValueAtTime(329.63, audioContext.currentTime + 0.1); // E4
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.3);
+            break;
+            
+          case 'bonus':
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+            oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
+            oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.2); // G5
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.4);
+            break;
+        }
+      }
+    });
+  </script>
 </body>
-</html>
+</html>		
